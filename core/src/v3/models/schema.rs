@@ -1,7 +1,7 @@
 use crate::v2::models::Either;
 
 use super::{invalid_referenceor, v2};
-use std::ops::Deref;
+use std::{ops::Deref, iter::FromIterator};
 
 impl From<v2::DefaultSchemaRaw> for openapiv3::ReferenceOr<Box<openapiv3::Schema>> {
     fn from(v2: v2::DefaultSchemaRaw) -> Self {
@@ -32,7 +32,7 @@ impl From<v2::DefaultSchemaRaw> for openapiv3::ReferenceOr<openapiv3::Schema> {
                         description: v2.description,
                         discriminator: None,
                         default: None,
-                        extensions: Default::default(),
+                        extensions: indexmap::IndexMap::from_iter(v2.extensions.into_iter()),
                     },
                     schema_kind: {
                         if let Some(data_type) = v2.data_type {
