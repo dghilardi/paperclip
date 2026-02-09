@@ -140,6 +140,38 @@ impl Responder for Pet {
     }
 }
 
+#[derive(Serialize, Deserialize, Apiv2Schema)]
+#[openapi(x_struct_extension = "struct-value")]
+pub struct CustomProp {
+    #[openapi(x_field_extension = "field-value")]
+    pub field: String,
+}
+
+#[cfg(feature = "actix4")]
+impl Responder for CustomProp {
+    type Body = BoxBody;
+
+    fn respond_to(self, _req: &HttpRequest) -> actix_web::HttpResponse {
+        let body = serde_json::to_string(&self).unwrap();
+        actix_web::HttpResponse::Ok()
+            .content_type("application/json")
+            .body(body)
+    }
+}
+
+#[cfg(not(feature = "actix4"))]
+impl Responder for CustomProp {
+    type Error = Error;
+    type Future = Ready<Result<actix_web::HttpResponse, Error>>;
+
+    fn respond_to(self, _req: &HttpRequest) -> Self::Future {
+        let body = serde_json::to_string(&self).unwrap();
+        ready(Ok(actix_web::HttpResponse::Ok()
+            .content_type("application/json")
+            .body(body)))
+    }
+}
+
 #[test]
 fn test_path_order() {
     #[derive(Deserialize, Apiv2Schema)]
@@ -5582,6 +5614,75 @@ fn test_array() {
                                 "$ref": "#/definitions/Pet"
                               },
                               "type": "array"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "swagger": "2.0"
+                }),
+            );
+        },
+    );
+}
+#[test]
+fn test_custom_properties() {
+    #[api_v2_operation]
+    async fn get_custom_prop() -> web::Json<CustomProp> {
+        web::Json(CustomProp {
+            field: "foo".into(),
+        })
+    }
+
+    run_and_check_app(
+        || {
+            App::new()
+                .wrap_api()
+                .with_json_spec_at("/api/spec")
+                .service(web::resource("/custom").route(web::get().to(get_custom_prop)))
+                .build()
+        },
+        |addr| {
+            let resp = CLIENT
+                .get(&format!("http://{}/api/spec", addr))
+                .send()
+                .expect("request failed?");
+
+            check_json(
+                resp,
+                json!({
+                  "definitions": {
+                    "CustomProp": {
+                      "extensions": {
+                        "x-struct-extension": "struct-value"
+                      },
+                      "properties": {
+                        "field": {
+                          "extensions": {
+                            "x-field-extension": "field-value"
+                          },
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "field"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "info": {
+                    "title": "",
+                    "version": ""
+                  },
+                  "paths": {
+                    "/custom": {
+                      "get": {
+                        "responses": {
+                          "200": {
+                            "description": "OK",
+                            "schema": {
+                              "$ref": "#/definitions/CustomProp"
                             }
                           }
                         }
