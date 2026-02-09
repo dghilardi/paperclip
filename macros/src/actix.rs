@@ -927,7 +927,7 @@ pub fn emit_v2_definition(input: TokenStream) -> TokenStream {
         let mut schema = DefaultSchemaRaw {
             name: Some(#schema_name.into()),
             example: #example,
-            extensions:#extensions,
+            extensions: #extensions,
             ..Default::default()
         };
     };
@@ -937,7 +937,7 @@ pub fn emit_v2_definition(input: TokenStream) -> TokenStream {
         let mut schema = DefaultSchemaRaw {
             name: Some(Self::__paperclip_schema_name()), // Add name for later use.
             example: #example,
-            extensions:#extensions,
+            extensions: #extensions,
             .. Default::default()
         };
     };
