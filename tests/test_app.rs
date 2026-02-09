@@ -5695,3 +5695,51 @@ fn test_custom_properties() {
         },
     );
 }
+
+#[test]
+fn test_operation_extensions() {
+    #[api_v2_operation(x_test_extension = "test-value")]
+    async fn extension_op() -> NoContent {
+        NoContent
+    }
+
+    run_and_check_app(
+        || {
+            App::new()
+                .wrap_api()
+                .with_json_spec_at("/api/spec")
+                .service(web::resource("/extension").route(web::get().to(extension_op)))
+                .build()
+        },
+        |addr| {
+            let resp = CLIENT
+                .get(&format!("http://{}/api/spec", addr))
+                .send()
+                .expect("request failed?");
+
+            check_json(
+                resp,
+                json!({
+                  "definitions": {},
+                  "info": {
+                    "title": "",
+                    "version": ""
+                  },
+                  "paths": {
+                    "/extension": {
+                      "get": {
+                        "responses": {
+                          "204": {
+                            "description": "No Content"
+                          }
+                        },
+                        "x-test-extension": "test-value"
+                      }
+                    }
+                  },
+                  "swagger": "2.0"
+                }),
+            );
+        },
+    );
+}

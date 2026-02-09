@@ -279,6 +279,7 @@ fn parse_operation_attrs(attrs: TokenStream) -> (Vec<Ident>, Vec<proc_macro2::To
     let attrs = crate::parse_input_attrs(attrs);
     let mut params = Vec::new();
     let mut values = Vec::new();
+    let mut extensions = Vec::new();
     for attr in attrs.0 {
         match &attr {
             NestedMeta::Meta(Meta::Path(attr_path)) => {
@@ -292,7 +293,8 @@ fn parse_operation_attrs(attrs: TokenStream) -> (Vec<Ident>, Vec<proc_macro2::To
             }
             NestedMeta::Meta(Meta::NameValue(MetaNameValue { path, lit, .. })) => {
                 if let Some(ident) = path.get_ident() {
-                    match ident.to_string().as_str() {
+                    let s_ident = ident.to_string();
+                    match s_ident.as_str() {
                         "summary" | "description" | "operation_id" => {
                             if let Lit::Str(val) = lit {
                                 params.push(ident.clone());
@@ -334,6 +336,10 @@ fn parse_operation_attrs(attrs: TokenStream) -> (Vec<Ident>, Vec<proc_macro2::To
                                     lit
                                 )
                             }
+                        }
+                        x if x.starts_with('x') => {
+                            let key = x.replace('_', "-");
+                            extensions.push(quote!((#key.to_string(), paperclip::v2::serde_json::to_value(&#lit).unwrap())));
                         }
                         x => emit_error!(ident.span(), "Unknown attribute {}", x),
                     }
@@ -377,6 +383,11 @@ fn parse_operation_attrs(attrs: TokenStream) -> (Vec<Ident>, Vec<proc_macro2::To
             }
         }
     }
+    if !extensions.is_empty() {
+        params.push(Ident::new("extensions", proc_macro2::Span::call_site()));
+        values.push(quote!(std::collections::BTreeMap::from([#(#extensions),*])));
+    }
+
     (params, values)
 }
 

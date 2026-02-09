@@ -722,6 +722,12 @@ pub struct Operation<P, R> {
     pub deprecated: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
+    #[serde(
+        flatten,
+        skip_serializing_if = "BTreeMap::is_empty",
+        deserialize_with = "crate::v2::extensions::deserialize_extensions"
+    )]
+    pub extensions: BTreeMap<String, serde_json::Value>,
 }
 
 impl<S> Operation<Parameter<S>, Response<S>> {
